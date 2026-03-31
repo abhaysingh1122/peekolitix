@@ -199,7 +199,7 @@ app.post('/api/verify-payment', async (req, res) => {
 });
 
 app.get("/", (req, res) => {
-  res.send("🚀 Peekolitix Backend is Running");
+  res.redirect("/status");
 });
 
 app.get("/status", async (req, res) => {
