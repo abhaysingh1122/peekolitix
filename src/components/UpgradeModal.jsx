@@ -60,12 +60,12 @@ const UpgradeModal = () => {
         body: JSON.stringify({ amount, receipt: `rcpt_${planKey}_${Date.now()}` })
       });
       const orderData = await response.json();
-      
+
       if (!orderData.success) throw new Error("Order creation failed");
 
       // 3. Spawns Razorpay Checkout Window
       const options = {
-        key: 'rzp_test_YOUR_KEY_ID', // Replaced dynamically in Prod
+        key: 'rzp_live_SXn65yEl8EFyrc', // Replaced dynamically in Prod
         amount: orderData.order.amount,
         currency: 'INR',
         name: 'Peekolitix',

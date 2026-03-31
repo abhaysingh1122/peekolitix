@@ -26,7 +26,7 @@ const GET_TIER_INSTRUCTION = (tier) => {
 - [JAM/GD EVALUATOR]: Critical logic score (1-10) for this politician/policy.
 - [ELI18 SUMMARY]: Simplified analogy using cricket or college exams.
 - [DEBATE PUNCHLINES]: 3 high-impact rebuttals.`;
-  
+
   if (tier === 'JOURNALIST_PREMIUM') return `### 📰 JOURNALIST PREMIUM DELIVERABLES (MANDATORY) ###
 - [RTI ANGLE]: 3 RTI queries to unlock hidden data.
 - [THE HIDDEN STORY]: 1 under-reported investigative angle.
@@ -98,17 +98,17 @@ STRICT: Avoid vague language. Use Indian official metrics (MPLADS, LGD, MoSPI).`
 app.post('/api/save-briefing', async (req, res) => {
   try {
     const { query, mode, perspective, report, dominanceScore, biasLevel, winProbability, user_id } = req.body;
-    
+
     // SECURITY: Reject unsecured requests
     if (!user_id) return res.status(401).json({ error: "Unauthorized. User ID missing." });
 
     const { error } = await supabase
       .from('debates')
-      .insert([{ 
-        user_id: user_id, 
-        topic: query, 
-        side: perspective, 
-        response: { mode, report, dominanceScore, biasLevel, winProbability } 
+      .insert([{
+        user_id: user_id,
+        topic: query,
+        side: perspective,
+        response: { mode, report, dominanceScore, biasLevel, winProbability }
       }]);
     if (error) throw error;
     res.json({ success: true });
@@ -118,7 +118,7 @@ app.post('/api/save-briefing', async (req, res) => {
 app.post('/api/history', async (req, res) => {
   try {
     const { user_id } = req.body;
-    
+
     // SECURITY: Ensure absolute dashboard isolation
     if (!user_id) return res.status(401).json({ error: "Unauthorized. User ID missing." });
 
@@ -127,9 +127,9 @@ app.post('/api/history', async (req, res) => {
       .select('*')
       .eq('user_id', user_id)
       .order('created_at', { ascending: false });
-      
+
     if (error) throw error;
-    
+
     const history = data.map(item => ({
       id: item.id, query: item.topic, perspective: item.side, mode: item.response.mode || 'DEBATE',
       report: item.response.report, dominanceScore: item.response.dominanceScore || 5,
@@ -149,7 +149,7 @@ const razorpay = new Razorpay({
 app.post('/api/create-order', async (req, res) => {
   try {
     const { amount, currency = 'INR', receipt } = req.body;
-    
+
     const options = {
       amount: amount * 100, // Amount is in currency subunits (paise)
       currency,
@@ -178,14 +178,14 @@ app.post('/api/verify-payment', async (req, res) => {
 
     if (expectedSignature === razorpay_signature) {
       // Security Check Passed! Valid Payment.
-      
+
       // Upgrade the Analyst's Global Clearance in Supabase
       if (user_id && plan_key) {
         const { error } = await supabase
           .from('profiles')
           .update({ tier: plan_key })
           .eq('id', user_id);
-          
+
         if (error) throw new Error("Payment verified, but failed to upgrade Supabase profile.");
       }
 
@@ -199,3 +199,6 @@ app.post('/api/verify-payment', async (req, res) => {
 });
 
 app.listen(PORT, () => console.log(`✅ PEAKOLITIX V2.3 ACTIVE (70B): http://localhost:${PORT}\n`));
+app.get("/", (req, res) => {
+  res.send("🚀 Peekolitix Backend is Running");
+});
