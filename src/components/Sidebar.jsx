@@ -22,7 +22,8 @@ import {
   ShieldAlert,
   Scale,
   Power,
-  User as UserIcon
+  User as UserIcon,
+  X as CloseIcon
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { usePremium, TIERS } from '../context/PremiumContext';
@@ -76,15 +77,23 @@ const Sidebar = ({ currentMode, setMode, onSynthesize, history = [], onSelectHis
   return (
     <motion.aside
       className={`sidebar glass-panel ${isCollapsed ? 'collapsed' : ''} ${isMobileOpen ? 'mobile-open' : ''}`}
-      animate={{ 
-        width: isMobileOpen ? 280 : (isCollapsed ? 64 : 260),
-        x: (isMobileOpen || window.innerWidth > 768) ? 0 : -280 
-      }}
+      initial={{ width: 260 }}
+      animate={{ width: isCollapsed ? 64 : 260 }}
       transition={{ duration: 0.3, ease: 'easeInOut' }}
     >
       <div className="sidebar-toggle" onClick={toggleSidebar}>
         {isCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
       </div>
+
+      {/* Mobile Close Button */}
+      {isMobileOpen && (
+        <div className="mobile-close-container">
+          <span className="mobile-drawer-title">COMMAND HUB</span>
+          <button className="mobile-close-btn" onClick={() => setMode(currentMode)}>
+            <CloseIcon size={20} />
+          </button>
+        </div>
+      )}
 
       {/* Tier badge */}
       {!isCollapsed && (
