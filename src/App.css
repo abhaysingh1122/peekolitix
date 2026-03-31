@@ -23,20 +23,32 @@
 @media (max-width: 768px) {
   .app-container {
     flex-direction: column;
-    overflow: auto;
-    height: auto;
-    min-height: 100vh;
+    overflow-x: hidden;
+    width: 100vw !important;
+    height: 100vh;
   }
   
   .main-content {
+    width: 100vw !important;
+    flex: 1 !important;
     flex-direction: column;
-    overflow: visible;
-    flex: none;
+    overflow-y: auto;
+    overflow-x: hidden;
+    position: relative;
   }
 
   .content-grid {
     flex-direction: column;
-    overflow: visible;
+    width: 100% !important;
+  }
+  .right-panel {
+    display: none !important; 
+  }
+
+  .sidebar {
+    width: 0 !important;
+    position: fixed;
+    z-index: 1000;
   }
 }
 

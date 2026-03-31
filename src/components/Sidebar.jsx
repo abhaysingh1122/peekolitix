@@ -76,8 +76,10 @@ const Sidebar = ({ currentMode, setMode, onSynthesize, history = [], onSelectHis
   return (
     <motion.aside
       className={`sidebar glass-panel ${isCollapsed ? 'collapsed' : ''} ${isMobileOpen ? 'mobile-open' : ''}`}
-      initial={{ width: 260 }}
-      animate={{ width: isCollapsed ? 64 : 260 }}
+      animate={{ 
+        width: isMobileOpen ? 280 : (isCollapsed ? 64 : 260),
+        x: (isMobileOpen || window.innerWidth > 768) ? 0 : -280 
+      }}
       transition={{ duration: 0.3, ease: 'easeInOut' }}
     >
       <div className="sidebar-toggle" onClick={toggleSidebar}>
