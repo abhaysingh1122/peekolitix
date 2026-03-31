@@ -39,6 +39,7 @@
 
 .briefing-content {
   flex: 1;
+  min-height: 0; /* Prevents overflow pushing query-section down */
   padding: 24px;
   overflow-y: auto;
   display: flex;
