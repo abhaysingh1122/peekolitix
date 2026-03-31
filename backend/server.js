@@ -10,7 +10,13 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 const NVIDIA_API_KEY = process.env.NVIDIA_API_KEY;
 
-app.use(cors());
+// Strict Firewall: Only allow the Vercel frontend to query the Llama 70B Engine
+const corsOptions = {
+  origin: ['https://peekolitix.vercel.app', 'http://localhost:5174'],
+  optionsSuccessStatus: 200
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 
 console.log('🚀 Peekolitix Intelligence Engine v2.3 (70B Enforcer) Starting...');
