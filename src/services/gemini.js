@@ -1,5 +1,5 @@
 // Point to your backend instead of direct NVIDIA to avoid CORS errors
-const BACKEND_URL = 'http://localhost:3001';
+const BACKEND_URL = 'https://peekolitix.onrender.com';
 
 const SYSTEM_INSTRUCTION = `
 You are Peekolitix, an Indian Political Intelligence Engine. Act as a Senior Macroeconomic Strategist and Debate Architect designed for debate dominance. Analyze every topic with deep structural rigor.
@@ -110,7 +110,7 @@ STRICT: Do NOT include any 'Note' or text-based explanation about these internal
 
 export const generateIntelligenceReport = async (query, mode, perspective, history = [], premiumModeKey = null) => {
   try {
-    const response = await fetch("http://localhost:3001/api/ai/analyze-v2", {
+    const response = await fetch(`${BACKEND_URL}/api/ai/analyze-v2`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

@@ -22,7 +22,7 @@ const PREMIUM_MODE_BASE = {
   CONSULTANT_PREMIUM: 'DEBATE',
 };
 
-const BACKEND_URL = 'http://localhost:3001';
+const BACKEND_URL = 'https://peekolitix.onrender.com';
 
 function Dashboard() {
   const [currentMode, setMode] = useState('DEBATE');

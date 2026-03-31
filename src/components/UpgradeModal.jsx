@@ -54,7 +54,7 @@ const UpgradeModal = () => {
 
     try {
       // 2. Contact Backend: Create Order
-      const response = await fetch('http://localhost:3001/api/create-order', {
+      const response = await fetch('https://peekolitix.onrender.com/api/create-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ amount, receipt: `rcpt_${planKey}_${Date.now()}` })
@@ -73,7 +73,7 @@ const UpgradeModal = () => {
         order_id: orderData.order.id,
         handler: async function (response) {
           // 4. Contact Backend: Verify Payment Signature
-          const verifyRes = await fetch('http://localhost:3001/api/verify-payment', {
+          const verifyRes = await fetch('https://peekolitix.onrender.com/api/verify-payment', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
