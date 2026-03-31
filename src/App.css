@@ -23,20 +23,23 @@
 @media (max-width: 768px) {
   .app-container {
     flex-direction: column;
-    overflow: auto;
-    height: auto;
-    min-height: 100vh;
+    height: 100dvh;
+    min-height: 100dvh;
+    overflow: hidden;
   }
   
   .main-content {
     flex-direction: column;
-    overflow: visible;
-    flex: none;
+    flex: 1;
+    overflow: hidden;
+    position: relative;
   }
 
   .content-grid {
     flex-direction: column;
-    overflow: visible;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-bottom: 120px; /* Search bar padding space */
   }
 }
 
