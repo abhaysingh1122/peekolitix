@@ -161,7 +161,7 @@ app.post('/api/create-order', async (req, res) => {
 
 app.post('/api/verify-payment', async (req, res) => {
   try {
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, user_id, plan_key } = req.body;
 
     // Secure cryptographic signature verification
     const body = razorpay_order_id + "|" + razorpay_payment_id;
@@ -172,7 +172,18 @@ app.post('/api/verify-payment', async (req, res) => {
 
     if (expectedSignature === razorpay_signature) {
       // Security Check Passed! Valid Payment.
-      res.json({ success: true, message: 'Payment verified successfully' });
+      
+      // Upgrade the Analyst's Global Clearance in Supabase
+      if (user_id && plan_key) {
+        const { error } = await supabase
+          .from('profiles')
+          .update({ tier: plan_key })
+          .eq('id', user_id);
+          
+        if (error) throw new Error("Payment verified, but failed to upgrade Supabase profile.");
+      }
+
+      res.json({ success: true, message: 'Payment verified and identity upgraded.' });
     } else {
       res.status(400).json({ success: false, error: 'Invalid Payment Signature' });
     }

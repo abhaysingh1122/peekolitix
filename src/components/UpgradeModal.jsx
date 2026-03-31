@@ -2,6 +2,7 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Star, GraduationCap, Newspaper, Briefcase, Check, Zap } from 'lucide-react';
 import { usePremium, TIERS } from '../context/PremiumContext';
+import { useAuth } from '../context/AuthContext';
 import './UpgradeModal.css';
 
 const PLAN_ICONS = {
@@ -43,6 +44,7 @@ const PLAN_FEATURES = {
 
 const UpgradeModal = () => {
   const { showUpgradeModal, closeUpgradeModal, upgradeTo, TIER_CONFIG, TIERS, targetTier, tier } = usePremium();
+  const { user } = useAuth();
 
   const handleUpgrade = async (planKey) => {
     // 1. Get the price logic (Strip '₹' and '/mo' to get clean integer)
@@ -77,7 +79,9 @@ const UpgradeModal = () => {
             body: JSON.stringify({
               razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_signature: response.razorpay_signature
+              razorpay_signature: response.razorpay_signature,
+              user_id: user?.id,
+              plan_key: planKey
             })
           });
           const verifyData = await verifyRes.json();
