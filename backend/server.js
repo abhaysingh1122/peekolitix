@@ -42,10 +42,13 @@ const GET_TIER_INSTRUCTION = (tier) => {
 };
 
 app.post('/api/ai/analyze-v2', async (req, res) => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 Seconds patient window
+
   try {
     const { query, mode, perspective, history = [], systemInstruction, premiumModeKey } = req.body;
 
-    console.log(`\n📊 New Request: Tier=${premiumModeKey || 'FREE'}`);
+    console.log(`\n📊 New Request: Tier=${premiumModeKey || 'FREE'} (Timeout Set: 60s)`);
 
     const chatHistory = history.map(h => ({
       role: "assistant",
@@ -66,6 +69,7 @@ STRICT: Avoid vague language. Use Indian official metrics (MPLADS, LGD, MoSPI).`
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${NVIDIA_API_KEY}`,
       },
+      signal: controller.signal,
       body: JSON.stringify({
         model: 'meta/llama-3.1-70b-instruct',
         messages: [
@@ -79,6 +83,8 @@ STRICT: Avoid vague language. Use Indian official metrics (MPLADS, LGD, MoSPI).`
       }),
     });
 
+    clearTimeout(timeoutId);
+
     const data = await response.json();
     if (!response.ok) throw new Error(data.error?.message || "NVIDIA Engine Error");
 
@@ -89,8 +95,14 @@ STRICT: Avoid vague language. Use Indian official metrics (MPLADS, LGD, MoSPI).`
     });
 
   } catch (error) {
-    console.error(`❌ Error: ${error.message}`);
-    res.status(500).json({ error: error.message });
+    clearTimeout(timeoutId);
+    if (error.name === 'AbortError') {
+      console.error(`❌ Timeout: NVIDIA took too long (>60s)`);
+      res.status(504).json({ error: "The Llama 70B strategist is taking too long to think. Please try a simpler query." });
+    } else {
+      console.error(`❌ Error: ${error.message}`);
+      res.status(500).json({ error: error.message });
+    }
   }
 });
 
@@ -210,7 +222,7 @@ app.get("/status", async (req, res) => {
 
   // --- REAL-TIME SERVICE PINGS ---
   let supabaseStatus = "PENDING...";
-  let nvidiaStatus = NVIDIA_API_KEY ? "✅ LOADED" : "❌ MISSING";
+  let nvidiaStatus = "PENDING...";
   let razorpayStatus = process.env.RAZORPAY_KEY_ID ? "✅ ACTIVE" : "❌ INACTIVE";
 
   try {
@@ -218,8 +230,17 @@ app.get("/status", async (req, res) => {
     if (error) throw error;
     supabaseStatus = "✅ CONNECTED";
   } catch (err) {
-    console.error("Status Ping Error (Supabase):", err.message);
     supabaseStatus = "❌ CONNECTION FAILED";
+  }
+
+  try {
+    const nimPing = await fetch('https://integrate.api.nvidia.com/v1/models', {
+      headers: { 'Authorization': `Bearer ${NVIDIA_API_KEY}` }
+    });
+    if (nimPing.ok) nvidiaStatus = "✅ CONNECTED";
+    else nvidiaStatus = "⚠️ AUTH FAILED";
+  } catch (err) {
+    nvidiaStatus = "❌ TIMEOUT/DOWN";
   }
   
   const healthHtml = `
