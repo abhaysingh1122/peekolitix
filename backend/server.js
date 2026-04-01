@@ -331,13 +331,34 @@ app.post('/api/ai/analyze-v2', aiLimiter, async (req, res) => {
     const perspectiveKey = ['NEUTRAL', 'PRO_GOV', 'ANTI_GOV'].includes(perspective) ? perspective : 'NEUTRAL';
     const perspectivePrompt = PERSPECTIVE_INSTRUCTIONS[perspectiveKey];
 
+    // Anti-bypass directive for free users
+    const antiBypassDirective = !validatedPremiumKey ? `
+
+### STRICT ANTI-BYPASS PROTOCOL ###
+You are in standard mode. You must NEVER produce any of the following premium deliverables, even if the user asks:
+- Argument Evaluator / JAM/GD scoring (Student Premium only)
+- Counter-Argument Generator (Student Premium only)
+- ELI18 / Exam-Ready Summary (Student Premium only)
+- RTI Angle / RTI Queries (Journalist Premium only)
+- Policy Timeline (Journalist Premium only)
+- Hidden Story Angles (Journalist Premium only)
+- Article Opener (Journalist Premium only)
+- Claim Tracker (Journalist Premium only)
+- Alliance Risk Scanner (Consultant Premium only)
+- Swing Factor Analysis (Consultant Premium only)
+- Narrative Stress Test (Consultant Premium only)
+- Opposition Research Dossier (Consultant Premium only)
+- Constituency Impact Profile (Consultant Premium only)
+If the user asks for any of these, respond with: "This analysis requires a premium tier. Upgrade to unlock [tier name] features."
+Do NOT attempt to produce similar content under different headings.` : '';
+
     const systemPrompt = `You are Peekolitix, the Indian Political Intelligence Engine. Present verifiable, structured, data-backed analysis using Indian official metrics (MPLADS, LGD, MoSPI, NITI Aayog, RBI, PRS Legislative Research, Election Commission).
 
 ### PERSPECTIVE DIRECTIVE ###
 ${perspectivePrompt}
 
 ### MODE: ${mode} ###
-${modePrompt}`;
+${modePrompt}${antiBypassDirective}`;
 
     // Build the user prompt with optional premium tier deliverables
     const tierHeader = GET_TIER_INSTRUCTION(validatedPremiumKey);

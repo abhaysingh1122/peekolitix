@@ -43,14 +43,6 @@ const Header = ({ user }) => {
           <Terminal size={14} />
           <span>SESSION: {briefingId}</span>
         </div>
-        <div className="user-profile">
-          <div className="avatar" style={{ background: tierConfig.color }}>
-            {user?.email?.[0].toUpperCase() || 'A'}
-          </div>
-          <span style={{ fontSize: '0.7rem', fontWeight: 600 }}>
-            {user?.email || 'OFFLINE ANALYST'}
-          </span>
-        </div>
       </div>
     </header>
   );
