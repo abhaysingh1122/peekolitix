@@ -77,7 +77,7 @@ export const PremiumProvider = ({ children }) => {
   const [targetTier, setTargetTier] = useState(null);
   const { user } = useAuth() || {};
 
-  // Fetch tier from Supabase on login
+  // Fetch tier from Supabase on login (secure — no localStorage)
   useEffect(() => {
     if (!user?.id || !supabase) return;
     const fetchTier = async () => {
