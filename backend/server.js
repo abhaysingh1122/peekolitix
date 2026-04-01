@@ -60,10 +60,9 @@ const PLAN_PRICES = { STUDENT: 49, JOURNALIST: 199, CONSULTANT: 499 };
 // ========================================================================
 const DOMINANCE_SCORE_DIRECTIVE = `
 
-### MANDATORY JSON FOOTER ###
-At the very end of your response, you MUST output the following JSON block on its own line (no markdown fences):
+SILENT INSTRUCTION (do NOT print any header or label for this): On the very last line of your response, output ONLY this JSON object with no other text around it:
 { "dominanceScore": X, "biasLevel": "Low/Med/High", "winProbability": "X%" }
-Where X is an integer 1-10 rating of analytical dominance, biasLevel reflects detected slant, and winProbability is a debate-win estimate.`;
+Replace X with your actual scores. Do NOT write "JSON Footer" or any label. Just the raw JSON object on the final line.`;
 
 // ========================================================================
 // FULL MODE INSTRUCTION MAP — each mode gets its own structured prompt
@@ -226,6 +225,13 @@ The "Methodology Note" column MUST state whether the comparison is Direct, Adjus
 ## Summary Verdict Table
 A second table: Metric | Status (Accurate/Misleading/Incomparable) | Why
 This table evaluates whether each metric is a FAIR comparison.
+
+CRITICAL: You MUST actually use "Misleading" or "Incomparable" where appropriate — do NOT mark everything as "Accurate" to avoid conflict. Specifically:
+- GDP comparisons between 2014-2023 (BJP) and 2004-2014 (Congress) MUST be flagged because BJP tenure includes COVID-19 (FY21 GDP: -7.3%) which massively distorts averages
+- Unemployment comparisons using PLFS (post-2017) vs NSSO (pre-2017) are INCOMPARABLE — different surveys
+- CPI inflation pre-2014 used a different methodology than post-2014 unified CPI
+- Debt-to-GDP spiked during COVID for ALL countries globally — flagging BJP tenure without this context is misleading
+- Foreign exchange reserves grow naturally over time — comparing absolute numbers across decades is meaningless without normalizing
 
 ## Strengths & Weaknesses
 ### [Entity A]
