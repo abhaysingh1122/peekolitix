@@ -18,6 +18,8 @@ const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 const corsOptions = {
   origin: [
     'https://peekolitix.vercel.app',
+    'https://peekolitix.in',
+    'https://www.peekolitix.in',
     'http://localhost:5173',
     'http://localhost:5174',
     'http://127.0.0.1:5173',
