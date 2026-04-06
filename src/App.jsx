@@ -11,6 +11,7 @@ import VerifyView from './components/VerifyView';
 import CompareView from './components/CompareView';
 import { motion } from 'framer-motion';
 import { Menu, X, Loader2 } from 'lucide-react';
+import { supabase } from './supabaseClient';
 import { PremiumProvider, usePremium, TIERS } from './context/PremiumContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { LanguageProvider, useLanguage } from './context/LanguageContext';
@@ -44,10 +45,19 @@ const TranslatedReport = ({ markdown, ViewComponent = ReportView }) => {
     const translateReport = async () => {
       setIsTranslating(true);
       try {
+        let token = 'dev-token';
+        if (supabase) {
+          const { data: { session } } = await supabase.auth.getSession();
+          token = session?.access_token || '';
+        }
+
         const BACKEND_URL_T = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:3001';
         const res = await fetch(`${BACKEND_URL_T}/api/translate`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
           body: JSON.stringify({ text: markdown, targetLang: 'hi' }),
         });
         const data = await res.json();
@@ -103,9 +113,18 @@ function Dashboard() {
   useEffect(() => {
     const fetchHistory = async () => {
       try {
+        let token = 'dev-token';
+        if (supabase) {
+          const { data: { session } } = await supabase.auth.getSession();
+          token = session?.access_token || '';
+        }
+
         const response = await fetch(`${BACKEND_URL}/api/history`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
           body: JSON.stringify({ user_id: user?.id })
         });
         const data = await response.json();
@@ -180,18 +199,30 @@ function Dashboard() {
       
       setHistory(prev => [newEntry, ...prev]); 
 
-      fetch(`${BACKEND_URL}/api/save-briefing`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          user_id: user?.id,
-          query,
-          mode: currentMode,
-          perspective: currentPerspective,
-          report: cleanMarkdown,
-          ...dominanceData
-        })
-      }).catch(err => console.error("Secure Supabase sync failed", err));
+      const saveBriefing = async () => {
+        let token = 'dev-token';
+        if (supabase) {
+          const { data: { session } } = await supabase.auth.getSession();
+          token = session?.access_token || '';
+        }
+
+        fetch(`${BACKEND_URL}/api/save-briefing`, {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            user_id: user?.id,
+            query,
+            mode: currentMode,
+            perspective: currentPerspective,
+            report: cleanMarkdown,
+            ...dominanceData
+          })
+        }).catch(err => console.error("Secure Supabase sync failed", err));
+      };
+      saveBriefing();
       
       let reportEl;
       if (currentMode === 'SIMULATE') {

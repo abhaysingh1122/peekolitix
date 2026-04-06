@@ -1,5 +1,12 @@
 // Point to your backend instead of direct NVIDIA to avoid CORS errors
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:3001';
+import { supabase } from '../supabaseClient';
+
+const getToken = async () => {
+  if (!supabase) return 'dev-token';
+  const { data: { session } } = await supabase.auth.getSession();
+  return session?.access_token || '';
+};
 
 const SYSTEM_INSTRUCTION = `
 You are Peekolitix, an Indian Political Intelligence Engine. Act as a Senior Macroeconomic Strategist and Debate Architect designed for debate dominance. Analyze every topic with deep structural rigor.
@@ -114,6 +121,7 @@ export const generateIntelligenceReport = async (query, mode, perspective, histo
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        "Authorization": `Bearer ${await getToken()}`
       },
       body: JSON.stringify({
         query,
@@ -145,6 +153,7 @@ export const synthesizeHistory = async (history) => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Authorization": `Bearer ${await getToken()}`
         },
         body: JSON.stringify({
           query: `Synthesize the following ${history.length} Indian Political Intelligence briefings into a single High-Coverage Strategy Dossier. Focus exclusively on the trends and metrics from these specific reports.`,

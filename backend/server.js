@@ -5,6 +5,7 @@ import fetch from 'node-fetch';
 import Razorpay from 'razorpay';
 import crypto from 'crypto';
 import rateLimit from 'express-rate-limit';
+import helmet from 'helmet';
 import supabase from './src/config/supabase.js';
 
 const app = express();
@@ -29,6 +30,7 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
+app.use(helmet());
 app.use(express.json());
 
 // ========================================================================
@@ -39,6 +41,70 @@ const aiLimiter = rateLimit({
   max: 10,
   message: { error: 'Rate limit exceeded. Try again in 60 seconds.' }
 });
+
+// ========================================================================
+// SECURITY MIDDLEWARE: SUPABASE JWT AUTHENTICATION 
+// ========================================================================
+const authenticate = async (req, res, next) => {
+  if (!supabase) {
+    req.user = { id: req.body.user_id || 'dev-user' };
+    return next();
+  }
+
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Unauthorized: Missing or invalid token' });
+  }
+
+  const token = authHeader.split(' ')[1];
+  try {
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    
+    if (error || !user) {
+      return res.status(401).json({ error: 'Unauthorized: Invalid token' });
+    }
+    
+    req.user = user;
+    next();
+  } catch (err) {
+    return res.status(500).json({ error: 'Authentication failed' });
+  }
+};
+
+// ========================================================================
+// SECURITY MIDDLEWARE: BACKEND QUERY RATE LIMITING (15 limit for Free tier)
+// ========================================================================
+const userQueryTracker = new Map();
+
+const checkQueryLimit = async (req, res, next) => {
+  if (!req.user || req.user.id === 'dev-user') return next();
+
+  let userTier = 'FREE';
+  if (supabase) {
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('tier')
+        .eq('id', req.user.id)
+        .single();
+      if (profile && profile.tier) {
+        userTier = profile.tier;
+      }
+    } catch (err) {
+      console.warn("Tier check failed, assuming FREE:", err.message);
+    }
+  }
+
+  if (userTier === 'FREE' || userTier === null || userTier === undefined) {
+    const currentCount = userQueryTracker.get(req.user.id) || 0;
+    if (currentCount >= 15) {
+      return res.status(429).json({ error: 'Daily query limit reached for FREE tier.' });
+    }
+    userQueryTracker.set(req.user.id, currentCount + 1);
+  }
+
+  next();
+};
 
 console.log('Peekolitix Intelligence Engine v2.4 (70B Enforcer) Starting...');
 
@@ -301,7 +367,7 @@ const GET_TIER_INSTRUCTION = (tier) => {
 // ========================================================================
 // AI ANALYSIS ENDPOINT — rate-limited, validated, perspective-aware
 // ========================================================================
-app.post('/api/ai/analyze-v2', aiLimiter, async (req, res) => {
+app.post('/api/ai/analyze-v2', aiLimiter, authenticate, checkQueryLimit, async (req, res) => {
   try {
     const { query, mode, perspective = 'NEUTRAL', history = [], systemInstruction, premiumModeKey } = req.body;
 
@@ -456,7 +522,7 @@ STRICT: Avoid vague language. Use Indian official metrics and cite sources.${dis
 // ========================================================================
 // TRANSLATION ENGINE — uses NVIDIA to translate briefing content
 // ========================================================================
-app.post('/api/translate', aiLimiter, async (req, res) => {
+app.post('/api/translate', aiLimiter, authenticate, async (req, res) => {
   try {
     const { text, targetLang = 'hi' } = req.body;
 
@@ -514,9 +580,10 @@ STRICT RULES:
 // ========================================================================
 // SECURE PERSISTENCE LAYER — all Supabase calls guarded
 // ========================================================================
-app.post('/api/save-briefing', async (req, res) => {
+app.post('/api/save-briefing', authenticate, async (req, res) => {
   try {
-    const { query, mode, perspective, report, dominanceScore, biasLevel, winProbability, user_id } = req.body;
+    const { query, mode, perspective, report, dominanceScore, biasLevel, winProbability } = req.body;
+    const user_id = req.user.id;
 
     if (!user_id) return res.status(401).json({ error: "Unauthorized. User ID missing." });
 
@@ -535,9 +602,9 @@ app.post('/api/save-briefing', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.post('/api/history', async (req, res) => {
+app.post('/api/history', authenticate, async (req, res) => {
   try {
-    const { user_id } = req.body;
+    const user_id = req.user.id;
 
     if (!user_id) return res.status(401).json({ error: "Unauthorized. User ID missing." });
 
@@ -568,7 +635,7 @@ const razorpay = (process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET
   ? new Razorpay({ key_id: process.env.RAZORPAY_KEY_ID, key_secret: process.env.RAZORPAY_KEY_SECRET })
   : null;
 
-app.post('/api/create-order', async (req, res) => {
+app.post('/api/create-order', authenticate, async (req, res) => {
   try {
     // FIX 8: Guard against missing Razorpay config
     if (!razorpay) return res.status(503).json({ error: 'Payment system not configured' });
@@ -597,12 +664,13 @@ app.post('/api/create-order', async (req, res) => {
   }
 });
 
-app.post('/api/verify-payment', async (req, res) => {
+app.post('/api/verify-payment', authenticate, async (req, res) => {
   try {
     // FIX 8: Guard against missing Razorpay config
     if (!razorpay) return res.status(503).json({ error: 'Payment system not configured' });
 
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, user_id, plan_key } = req.body;
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, plan_key } = req.body;
+    const user_id = req.user.id;
 
     // FIX 9: No insecure fallback — reject if secret is missing
     const secret = process.env.RAZORPAY_KEY_SECRET;
