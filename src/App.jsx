@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import './App.css';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
@@ -10,12 +10,72 @@ import SimulateView from './components/SimulateView';
 import VerifyView from './components/VerifyView';
 import CompareView from './components/CompareView';
 import { motion } from 'framer-motion';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, Loader2 } from 'lucide-react';
 import { PremiumProvider, usePremium, TIERS } from './context/PremiumContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import AuthView from './components/AuthView';
 import UpgradeModal from './components/UpgradeModal';
 import DevPanel from './components/DevPanel';
+
+// =====================================================================
+// TranslatedReport — wraps any report view with Hindi translation layer
+// =====================================================================
+const TranslatedReport = ({ markdown, ViewComponent = ReportView }) => {
+  const { lang, isHindi } = useLanguage();
+  const [translatedText, setTranslatedText] = useState(null);
+  const [isTranslating, setIsTranslating] = useState(false);
+  const cacheRef = useRef({});
+
+  useEffect(() => {
+    if (!isHindi || !markdown) {
+      setTranslatedText(null);
+      return;
+    }
+
+    // Check cache first
+    const cacheKey = markdown.substring(0, 100);
+    if (cacheRef.current[cacheKey]) {
+      setTranslatedText(cacheRef.current[cacheKey]);
+      return;
+    }
+
+    // Translate via backend
+    const translateReport = async () => {
+      setIsTranslating(true);
+      try {
+        const BACKEND_URL_T = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:3001';
+        const res = await fetch(`${BACKEND_URL_T}/api/translate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: markdown, targetLang: 'hi' }),
+        });
+        const data = await res.json();
+        if (data.success && data.translated) {
+          cacheRef.current[cacheKey] = data.translated;
+          setTranslatedText(data.translated);
+        }
+      } catch (err) {
+        console.error('Translation failed:', err);
+      } finally {
+        setIsTranslating(false);
+      }
+    };
+    translateReport();
+  }, [isHindi, markdown]);
+
+  if (isHindi && isTranslating) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: 40, color: '#ffa500' }}>
+        <Loader2 size={28} style={{ animation: 'spin 1s linear infinite' }} />
+        <span style={{ fontFamily: 'monospace', fontSize: '0.85rem', letterSpacing: 1 }}>हिंदी में अनुवाद हो रहा है...</span>
+      </div>
+    );
+  }
+
+  const displayMarkdown = (isHindi && translatedText) ? translatedText : markdown;
+  return <ViewComponent markdownContent={displayMarkdown} />;
+};
 
 // Premium mode key map: what base mode to use as the underlying query
 const PREMIUM_MODE_BASE = {
@@ -135,13 +195,13 @@ function Dashboard() {
       
       let reportEl;
       if (currentMode === 'SIMULATE') {
-        reportEl = <SimulateView markdownContent={cleanMarkdown} />;
+        reportEl = <TranslatedReport markdown={cleanMarkdown} ViewComponent={SimulateView} />;
       } else if (currentMode === 'VERIFY') {
-        reportEl = <VerifyView markdownContent={cleanMarkdown} />;
+        reportEl = <TranslatedReport markdown={cleanMarkdown} ViewComponent={VerifyView} />;
       } else if (currentMode === 'COMPARE') {
-        reportEl = <CompareView markdownContent={cleanMarkdown} />;
+        reportEl = <TranslatedReport markdown={cleanMarkdown} ViewComponent={CompareView} />;
       } else {
-        reportEl = <ReportView markdownContent={cleanMarkdown} />;
+        reportEl = <TranslatedReport markdown={cleanMarkdown} />;
       }
 
       setIntelligenceData(
@@ -211,7 +271,7 @@ function Dashboard() {
         onSynthesize={handleCombineHistory}
         history={history}
         onSelectHistory={(item) => { 
-          setIntelligenceData(<ReportView markdownContent={item.report} />);
+          setIntelligenceData(<TranslatedReport markdown={item.report} />);
           setIsMobileMenuOpen(false);
         }}
         onSignOut={signOut}
@@ -258,11 +318,13 @@ const AuthWrapper = () => {
 
 function App() {
   return (
-    <AuthProvider>
-      <PremiumProvider>
-        <AuthWrapper />
-      </PremiumProvider>
-    </AuthProvider>
+    <LanguageProvider>
+      <AuthProvider>
+        <PremiumProvider>
+          <AuthWrapper />
+        </PremiumProvider>
+      </AuthProvider>
+    </LanguageProvider>
   );
 }
 

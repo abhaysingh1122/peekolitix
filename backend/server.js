@@ -454,6 +454,64 @@ STRICT: Avoid vague language. Use Indian official metrics and cite sources.${dis
 });
 
 // ========================================================================
+// TRANSLATION ENGINE — uses NVIDIA to translate briefing content
+// ========================================================================
+app.post('/api/translate', aiLimiter, async (req, res) => {
+  try {
+    const { text, targetLang = 'hi' } = req.body;
+
+    if (!text || typeof text !== 'string') {
+      return res.status(400).json({ error: 'Missing "text" field.' });
+    }
+
+    // Cap input to prevent abuse
+    const trimmedText = text.substring(0, 8000);
+
+    const langName = targetLang === 'hi' ? 'Hindi' : 'English';
+
+    const response = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${NVIDIA_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: 'meta/llama-3.1-70b-instruct',
+        messages: [
+          {
+            role: 'system',
+            content: `You are a professional translator. Translate the following text to ${langName}.
+
+STRICT RULES:
+1. Preserve ALL markdown formatting exactly (##, ###, **, *, -, >, numbers, tables, blockquotes).
+2. Preserve ALL emojis exactly as they are.
+3. Do NOT add any commentary, notes, or explanations.
+4. Do NOT translate proper nouns (names of people, places, institutions, schemes like MPLADS, PMAY, NITI Aayog, BJP, Congress, etc.).
+5. Do NOT translate data/numbers/percentages.
+6. Keep technical English terms in parentheses after Hindi translation where helpful (e.g., "सकल घरेलू उत्पाद (GDP)").
+7. Output ONLY the translated text, nothing else.`
+          },
+          { role: 'user', content: trimmedText }
+        ],
+        temperature: 0.1,
+        max_tokens: 4000,
+      }),
+    });
+
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error?.message || 'Translation engine error');
+
+    res.json({
+      success: true,
+      translated: data.choices[0].message.content,
+    });
+  } catch (error) {
+    console.error(`Translation Error: ${error.message}`);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ========================================================================
 // SECURE PERSISTENCE LAYER — all Supabase calls guarded
 // ========================================================================
 app.post('/api/save-briefing', async (req, res) => {

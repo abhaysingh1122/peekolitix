@@ -20,10 +20,13 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { usePremium, TIERS } from '../context/PremiumContext';
+import { useLanguage } from '../context/LanguageContext';
+import { t } from '../i18n/translations';
 
 const Sidebar = ({ currentMode, setMode, onSynthesize, history = [], onSelectHistory, onSignOut, user, isMobileOpen }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const { tier, canAccessMode, openUpgradeModal, TIER_CONFIG } = usePremium();
+  const { lang } = useLanguage();
 
   const tierConfig = TIER_CONFIG[tier];
 
@@ -93,7 +96,7 @@ const Sidebar = ({ currentMode, setMode, onSynthesize, history = [], onSelectHis
 
       {/* Premium modes */}
       <div className="sidebar-section">
-        {!isCollapsed && <h3 className="section-title"><Star size={14} style={{ color: '#ffd166' }} /> PREMIUM MODES</h3>}
+        {!isCollapsed && <h3 className="section-title"><Star size={14} style={{ color: '#ffd166' }} /> {t('PREMIUM MODES', lang)}</h3>}
         <ul className="nav-list">
           {premiumChannels.map((channel) => {
             const Icon = channel.icon;
@@ -108,7 +111,7 @@ const Sidebar = ({ currentMode, setMode, onSynthesize, history = [], onSelectHis
                 title={isCollapsed ? channel.label : ''}
               >
                 <Icon size={18} style={ hasAccess ? { color: channel.color } : {}} />
-                {!isCollapsed && <span>{channel.label}</span>}
+                {!isCollapsed && <span>{t(channel.label, lang)}</span>}
                 {!isCollapsed && !hasAccess && <Lock size={12} className="lock-icon" />}
               </li>
             );
@@ -126,7 +129,7 @@ const Sidebar = ({ currentMode, setMode, onSynthesize, history = [], onSelectHis
 
       {/* Combat modes */}
       <div className="sidebar-section">
-        {!isCollapsed && <h3 className="section-title"><Target size={14} style={{ color: '#ff4d4d' }} /> COMBAT ARENA</h3>}
+        {!isCollapsed && <h3 className="section-title"><Target size={14} style={{ color: '#ff4d4d' }} /> {t('COMBAT ARENA', lang)}</h3>}
         <ul className="nav-list">
           {combatChannels.map((channel) => {
             const Icon = channel.icon;
@@ -140,7 +143,7 @@ const Sidebar = ({ currentMode, setMode, onSynthesize, history = [], onSelectHis
                 title={isCollapsed ? channel.label : ''}
               >
                 <Icon size={18} style={{ color: channel.color }} />
-                {!isCollapsed && <span>{channel.label}</span>}
+                {!isCollapsed && <span>{t(channel.label, lang)}</span>}
               </li>
             );
           })}
@@ -151,7 +154,7 @@ const Sidebar = ({ currentMode, setMode, onSynthesize, history = [], onSelectHis
 
       {/* History */}
       <div className="sidebar-section h-full">
-        {!isCollapsed && <h3 className="section-title"><History size={14} /> RECENT BRIEFINGS</h3>}
+        {!isCollapsed && <h3 className="section-title"><History size={14} /> {t('RECENT BRIEFINGS', lang)}</h3>}
         {isCollapsed && <div className="collapsed-icon"><History size={18} className="brand-icon"/></div>}
 
         <ul className="nav-list briefing-list">
@@ -180,7 +183,7 @@ const Sidebar = ({ currentMode, setMode, onSynthesize, history = [], onSelectHis
             title="Combine History"
           >
             <Layers size={18} />
-            {!isCollapsed && <span>COMBINE HISTORY</span>}
+            {!isCollapsed && <span>{t('COMBINE HISTORY', lang)}</span>}
           </button>
         )}
       </div>
@@ -193,7 +196,7 @@ const Sidebar = ({ currentMode, setMode, onSynthesize, history = [], onSelectHis
             </div>
             <div className="profile-info">
               <span className="profile-alias">{user.email?.split('@')[0].toUpperCase()}</span>
-              <span className="profile-status">VERIFIED ANALYST</span>
+              <span className="profile-status">{t('VERIFIED ANALYST', lang)}</span>
             </div>
           </div>
         )}

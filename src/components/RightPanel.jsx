@@ -2,8 +2,12 @@ import React, { useState } from 'react';
 import './RightPanel.css';
 import { Target, TrendingUp, ShieldAlert, Award, PanelRightClose, PanelRightOpen } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { useLanguage } from '../context/LanguageContext';
+import { t } from '../i18n/translations';
 
 const RightPanel = ({ history = [] }) => {
+  const { lang } = useLanguage();
+
   // Extract data for chart (reversed to show oldest to newest)
   const chartData = [...history].reverse().map((h, i) => ({
     name: `T${i + 1}`,
@@ -17,11 +21,11 @@ const RightPanel = ({ history = [] }) => {
     : 0;
 
   const getRank = (score) => {
-    if (score === 0) return "UNRANKED";
-    if (score < 4) return "ROOKIE ANALYST";
-    if (score < 7) return "FIELD STRATEGIST";
-    if (score < 9) return "DEBATE ARCHITECT";
-    return "WAR ROOM KING";
+    if (score === 0) return t("UNRANKED", lang);
+    if (score < 4) return t("ROOKIE ANALYST", lang);
+    if (score < 7) return t("FIELD STRATEGIST", lang);
+    if (score < 9) return t("DEBATE ARCHITECT", lang);
+    return t("WAR ROOM KING", lang);
   };
 
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -31,7 +35,7 @@ const RightPanel = ({ history = [] }) => {
       <aside className="right-panel-collapsed">
         <button className="rp-toggle-btn" onClick={() => setIsCollapsed(false)} title="Show Intel Panel">
           <PanelRightOpen size={16} />
-          <span className="rp-toggle-text">INTEL</span>
+          <span className="rp-toggle-text">{t('INTEL', lang)}</span>
         </button>
       </aside>
     );
@@ -45,20 +49,20 @@ const RightPanel = ({ history = [] }) => {
       <div className="panel-section">
         <h3 className="panel-title">
           <Award size={16} className="text-accent" />
-          INTELLIGENCE RANKING
+          {t('INTELLIGENCE RANKING', lang)}
         </h3>
         <div className="rank-card">
           <div className="rank-main">
-            <span className="rank-label">CURRENT STATUS</span>
+            <span className="rank-label">{t('CURRENT STATUS', lang)}</span>
             <h2 className="rank-value">{getRank(avgScore)}</h2>
           </div>
           <div className="rank-stats">
             <div className="stat-item">
-              <span className="stat-label">AVG SCORE</span>
+              <span className="stat-label">{t('AVG SCORE', lang)}</span>
               <span className="stat-num">{avgScore}/10</span>
             </div>
             <div className="stat-item">
-              <span className="stat-label">TURNS</span>
+              <span className="stat-label">{t('TURNS', lang)}</span>
               <span className="stat-num">{history.length}</span>
             </div>
           </div>
@@ -70,13 +74,13 @@ const RightPanel = ({ history = [] }) => {
       <div className="panel-section flex-1">
         <h3 className="panel-title">
           <TrendingUp size={16} style={{ color: '#00d4ff' }} />
-          DOMINANCE TREND
+          {t('DOMINANCE TREND', lang)}
         </h3>
         <div className="chart-container">
           {history.length < 2 ? (
             <div className="empty-chart">
               <Target size={32} className="pulse" />
-              <p>Gathering intelligence to build your combat profile...</p>
+              <p>{t('Gathering intelligence to build your combat profile...', lang)}</p>
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={180}>
@@ -108,17 +112,17 @@ const RightPanel = ({ history = [] }) => {
       <div className="panel-section">
         <h3 className="panel-title">
           <ShieldAlert size={16} style={{ color: lastEntry?.biasLevel === 'High' ? '#ff4d4d' : '#38b000' }} />
-          LAST ENGAGEMENT
+          {t('LAST ENGAGEMENT', lang)}
         </h3>
         <div className="stats-box">
           <div className="grid-stat">
-            <span className="grid-label">BIAS DETECTED</span>
+            <span className="grid-label">{t('BIAS DETECTED', lang)}</span>
             <span className={`grid-value ${lastEntry?.biasLevel === 'High' ? 'text-danger' : 'text-success'}`}>
               {lastEntry?.biasLevel || 'N/A'}
             </span>
           </div>
           <div className="grid-stat">
-            <span className="grid-label">WIN PROBABILITY</span>
+            <span className="grid-label">{t('WIN PROBABILITY', lang)}</span>
             <span className="grid-value text-accent">{lastEntry?.winProbability || '0%'}</span>
           </div>
         </div>

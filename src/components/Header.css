@@ -138,6 +138,40 @@
   box-shadow: 0 0 10px rgba(199, 125, 255, 0.3);
 }
 
+/* Language Toggle */
+.lang-toggle {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 99px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-muted);
+}
+
+.lang-toggle:hover {
+  border-color: rgba(255, 165, 0, 0.4);
+  background: rgba(255, 165, 0, 0.08);
+  color: #ffa500;
+}
+
+.lang-toggle.lang-hi {
+  background: rgba(255, 165, 0, 0.12);
+  border-color: rgba(255, 165, 0, 0.4);
+  color: #ffa500;
+  box-shadow: 0 0 12px rgba(255, 165, 0, 0.15);
+}
+
+.lang-label {
+  font-family: 'Inter', sans-serif;
+}
+
 .mobile-burger-btn {
   display: none;
   background: transparent;
