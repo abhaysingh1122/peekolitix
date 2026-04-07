@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import './App.css';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
@@ -10,12 +10,82 @@ import SimulateView from './components/SimulateView';
 import VerifyView from './components/VerifyView';
 import CompareView from './components/CompareView';
 import { motion } from 'framer-motion';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, Loader2 } from 'lucide-react';
+import { supabase } from './supabaseClient';
 import { PremiumProvider, usePremium, TIERS } from './context/PremiumContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import AuthView from './components/AuthView';
 import UpgradeModal from './components/UpgradeModal';
 import DevPanel from './components/DevPanel';
+
+// =====================================================================
+// TranslatedReport — wraps any report view with Hindi translation layer
+// =====================================================================
+const TranslatedReport = ({ markdown, ViewComponent = ReportView }) => {
+  const { lang, isHindi } = useLanguage();
+  const [translatedText, setTranslatedText] = useState(null);
+  const [isTranslating, setIsTranslating] = useState(false);
+  const cacheRef = useRef({});
+
+  useEffect(() => {
+    if (!isHindi || !markdown) {
+      setTranslatedText(null);
+      return;
+    }
+
+    // Check cache first
+    const cacheKey = markdown.substring(0, 100);
+    if (cacheRef.current[cacheKey]) {
+      setTranslatedText(cacheRef.current[cacheKey]);
+      return;
+    }
+
+    // Translate via backend
+    const translateReport = async () => {
+      setIsTranslating(true);
+      try {
+        let token = 'dev-token';
+        if (supabase) {
+          const { data: { session } } = await supabase.auth.getSession();
+          token = session?.access_token || '';
+        }
+
+        const BACKEND_URL_T = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:3001';
+        const res = await fetch(`${BACKEND_URL_T}/api/translate`, {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ text: markdown, targetLang: 'hi' }),
+        });
+        const data = await res.json();
+        if (data.success && data.translated) {
+          cacheRef.current[cacheKey] = data.translated;
+          setTranslatedText(data.translated);
+        }
+      } catch (err) {
+        console.error('Translation failed:', err);
+      } finally {
+        setIsTranslating(false);
+      }
+    };
+    translateReport();
+  }, [isHindi, markdown]);
+
+  if (isHindi && isTranslating) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: 40, color: '#ffa500' }}>
+        <Loader2 size={28} style={{ animation: 'spin 1s linear infinite' }} />
+        <span style={{ fontFamily: 'monospace', fontSize: '0.85rem', letterSpacing: 1 }}>हिंदी में अनुवाद हो रहा है...</span>
+      </div>
+    );
+  }
+
+  const displayMarkdown = (isHindi && translatedText) ? translatedText : markdown;
+  return <ViewComponent markdownContent={displayMarkdown} />;
+};
 
 // Premium mode key map: what base mode to use as the underlying query
 const PREMIUM_MODE_BASE = {
@@ -43,9 +113,18 @@ function Dashboard() {
   useEffect(() => {
     const fetchHistory = async () => {
       try {
+        let token = 'dev-token';
+        if (supabase) {
+          const { data: { session } } = await supabase.auth.getSession();
+          token = session?.access_token || '';
+        }
+
         const response = await fetch(`${BACKEND_URL}/api/history`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
           body: JSON.stringify({ user_id: user?.id })
         });
         const data = await response.json();
@@ -82,26 +161,31 @@ function Dashboard() {
       
       let dominanceData = { dominanceScore: 5, biasLevel: 'Low', winProbability: '50%' };
       try {
-        // Try fenced JSON first, then raw JSON object
-        const fencedMatch = markdownRes.match(/```json\n?([\s\S]*?)\n?```/);
-        const rawMatch = markdownRes.match(/\{\s*"dominanceScore"\s*:\s*\d[\s\S]*?"winProbability"\s*:\s*"[^"]*"\s*\}/);
-        const jsonStr = fencedMatch ? fencedMatch[1] : rawMatch ? rawMatch[0] : null;
-        if (jsonStr) {
+        // High-fidelity regex to find the JSON block even with formatting variances
+        const jsonBlockMatch = markdownRes.match(/\{[\s\S]*?"dominanceScore"[\s\S]*?"winProbability"[\s\S]*?\}/);
+        
+        if (jsonBlockMatch) {
+          const jsonStr = jsonBlockMatch[0];
           const parsed = JSON.parse(jsonStr);
-          if (parsed.dominanceScore) {
-            dominanceData.dominanceScore = Math.min(Number(parsed.dominanceScore), 10);
+          if (parsed.dominanceScore !== undefined) {
+            dominanceData.dominanceScore = Math.min(Math.max(Number(parsed.dominanceScore), 1), 10);
             dominanceData.biasLevel = parsed.biasLevel || 'Low';
             dominanceData.winProbability = parsed.winProbability || '50%';
           }
         }
-      } catch (e) { console.error("Score parsing error", e); }
+      } catch (e) { 
+        console.warn("Soft-failure on dominance parsing; using defaults.", e); 
+      }
 
+      // Ruthless cleaning: Remove the internal data block from the user-facing report
       const cleanMarkdown = markdownRes
-        .replace(/```json\n?([\s\S]*?)\n?```/g, '')
-        .replace(/\{\s*"dominanceScore"[\s\S]*?"winProbability"[\s\S]*?\}/g, '')
+        .replace(/```json[\s\S]*?```/gi, '')
+        .replace(/\{[\s\S]*?"dominanceScore"[\s\S]*?"winProbability"[\s\S]*?\}/gi, '')
         .replace(/JSON[\s_]*BLOCK:?/gi, '')
         .replace(/JSON[\s_]*Footer:?/gi, '')
         .replace(/### MANDATORY JSON FOOTER ###[\s\S]*$/gi, '')
+        .replace(/### INTERNAL METRICS ###/gi, '')
+        .replace(/\[DOMINANCE DATA SCANNED\]/gi, '')
         .replace(/SILENT INSTRUCTION[\s\S]*$/gi, '')
         .replace(/\n\s*Note:\s*The (above|dominance|JSON|internal|hidden)[\s\S]*?$/gi, '')
         .replace(/PREMIUM LAYER:?/gi, '')
@@ -119,28 +203,40 @@ function Dashboard() {
       
       setHistory(prev => [newEntry, ...prev]); 
 
-      fetch(`${BACKEND_URL}/api/save-briefing`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          user_id: user?.id,
-          query,
-          mode: currentMode,
-          perspective: currentPerspective,
-          report: cleanMarkdown,
-          ...dominanceData
-        })
-      }).catch(err => console.error("Secure Supabase sync failed", err));
+      const saveBriefing = async () => {
+        let token = 'dev-token';
+        if (supabase) {
+          const { data: { session } } = await supabase.auth.getSession();
+          token = session?.access_token || '';
+        }
+
+        fetch(`${BACKEND_URL}/api/save-briefing`, {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            user_id: user?.id,
+            query,
+            mode: currentMode,
+            perspective: currentPerspective,
+            report: cleanMarkdown,
+            ...dominanceData
+          })
+        }).catch(err => console.error("Secure Supabase sync failed", err));
+      };
+      saveBriefing();
       
       let reportEl;
       if (currentMode === 'SIMULATE') {
-        reportEl = <SimulateView markdownContent={cleanMarkdown} />;
+        reportEl = <TranslatedReport markdown={cleanMarkdown} ViewComponent={SimulateView} />;
       } else if (currentMode === 'VERIFY') {
-        reportEl = <VerifyView markdownContent={cleanMarkdown} />;
+        reportEl = <TranslatedReport markdown={cleanMarkdown} ViewComponent={VerifyView} />;
       } else if (currentMode === 'COMPARE') {
-        reportEl = <CompareView markdownContent={cleanMarkdown} />;
+        reportEl = <TranslatedReport markdown={cleanMarkdown} ViewComponent={CompareView} />;
       } else {
-        reportEl = <ReportView markdownContent={cleanMarkdown} />;
+        reportEl = <TranslatedReport markdown={cleanMarkdown} />;
       }
 
       setIntelligenceData(
@@ -199,15 +295,6 @@ function Dashboard() {
 
   return (
     <div className="app-container">
-      {/* Mobile Top Bar */}
-      <div className="mobile-header">
-        <button className="burger-btn" onClick={() => setIsMobileMenuOpen(true)}>
-          <Menu size={24} />
-        </button>
-        <div className="mobile-logo">PEEKOLITIX</div>
-        <div style={{ width: 40 }} /> {/* Spacer */}
-      </div>
-
       {/* Mobile Overlay */}
       {isMobileMenuOpen && (
         <div className="sidebar-overlay" onClick={() => setIsMobileMenuOpen(false)} />
@@ -219,7 +306,7 @@ function Dashboard() {
         onSynthesize={handleCombineHistory}
         history={history}
         onSelectHistory={(item) => { 
-          setIntelligenceData(<ReportView markdownContent={item.report} />);
+          setIntelligenceData(<TranslatedReport markdown={item.report} />);
           setIsMobileMenuOpen(false);
         }}
         onSignOut={signOut}
@@ -228,7 +315,7 @@ function Dashboard() {
       />
       
       <div className="main-content">
-        <Header user={user} />
+        <Header user={user} onToggleMobileMenu={() => setIsMobileMenuOpen(true)} />
         
         <div className="content-grid">
           <BriefingArea
@@ -266,11 +353,13 @@ const AuthWrapper = () => {
 
 function App() {
   return (
-    <AuthProvider>
-      <PremiumProvider>
-        <AuthWrapper />
-      </PremiumProvider>
-    </AuthProvider>
+    <LanguageProvider>
+      <AuthProvider>
+        <PremiumProvider>
+          <AuthWrapper />
+        </PremiumProvider>
+      </AuthProvider>
+    </LanguageProvider>
   );
 }
 

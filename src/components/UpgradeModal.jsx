@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Star, GraduationCap, Newspaper, Briefcase, Check, Zap } from 'lucide-react';
 import { usePremium, TIERS } from '../context/PremiumContext';
 import { useAuth } from '../context/AuthContext';
+import { supabase } from '../supabaseClient';
 import './UpgradeModal.css';
 
 const PLAN_ICONS = {
@@ -51,10 +52,19 @@ const UpgradeModal = () => {
     const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:3001';
 
     try {
+      let token = 'dev-token';
+      if (supabase) {
+        const { data: { session } } = await supabase.auth.getSession();
+        token = session?.access_token || '';
+      }
+
       // 1. Contact Backend: Create Order (server validates price)
       const response = await fetch(`${BACKEND_URL}/api/create-order`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ plan: planKey, receipt: `rcpt_${planKey}_${Date.now()}` })
       });
       const orderData = await response.json();
@@ -73,7 +83,10 @@ const UpgradeModal = () => {
           // 4. Contact Backend: Verify Payment Signature
           const verifyRes = await fetch(`${BACKEND_URL}/api/verify-payment`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
             body: JSON.stringify({
               razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
