@@ -17,15 +17,9 @@ const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 // CORS FIREWALL — only allow known frontend origins
 // ========================================================================
 const corsOptions = {
-  origin: [
-    'https://peekolitix.vercel.app',
-    'https://peekolitix.in',
-    'https://www.peekolitix.in',
-    'http://localhost:5173',
-    'http://localhost:5174',
-    'http://127.0.0.1:5173',
-    'http://127.0.0.1:5174',
-  ],
+  origin: IS_PRODUCTION
+    ? ['https://peekolitix.vercel.app', 'https://peekolitix.in', 'https://www.peekolitix.in']
+    : ['http://localhost:5173', 'http://localhost:5174', 'http://127.0.0.1:5173', 'http://127.0.0.1:5174'],
   optionsSuccessStatus: 200
 };
 
@@ -41,13 +35,19 @@ const aiLimiter = rateLimit({
   max: 10,
   message: { error: 'Rate limit exceeded. Try again in 60 seconds.' }
 });
+const generalLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  message: { error: 'Too many requests. Try again shortly.' }
+});
 
 // ========================================================================
 // SECURITY MIDDLEWARE: SUPABASE JWT AUTHENTICATION 
 // ========================================================================
 const authenticate = async (req, res, next) => {
   if (!supabase) {
-    req.user = { id: req.body.user_id || 'dev-user' };
+    if (IS_PRODUCTION) return res.status(503).json({ error: 'Authentication service unavailable.' });
+    req.user = { id: 'dev-user' }; // Fixed ID — never trust client input
     return next();
   }
 
@@ -391,21 +391,38 @@ const GET_TIER_INSTRUCTION = (tier) => {
 // ========================================================================
 app.post('/api/ai/analyze-v2', aiLimiter, authenticate, checkQueryLimit, async (req, res) => {
   try {
-    const { query, mode, perspective = 'NEUTRAL', history = [], systemInstruction, premiumModeKey } = req.body;
+    const { query, mode, perspective = 'NEUTRAL', history = [], premiumModeKey } = req.body;
+    // systemInstruction from client is intentionally ignored — all prompts are built server-side
 
-    // FIX 5: Validate mode parameter against whitelist
-    if (!ALLOWED_MODES.includes(mode)) {
-      return res.status(400).json({ error: 'Invalid mode' });
-    }
+    // Input validation
+    if (!query || typeof query !== 'string') return res.status(400).json({ error: 'Query is required' });
+    if (query.length > 3000) return res.status(400).json({ error: 'Query too long. Maximum 3000 characters.' });
+    if (!ALLOWED_MODES.includes(mode)) return res.status(400).json({ error: 'Invalid mode' });
 
-    // FIX 6: Server-side premium tier enforcement
-    // TODO: Add full JWT verification when Supabase auth is configured.
-    //       For now we validate that premiumModeKey is an expected value and log a warning.
-    //       Without JWT, a sophisticated client could spoof the key — this is a stopgap.
-    if (premiumModeKey && !ALLOWED_PREMIUM_KEYS.includes(premiumModeKey)) {
-      console.warn(`WARNING: Unknown premiumModeKey received: "${premiumModeKey}" — ignoring premium deliverables.`);
+    // Server-side premium tier enforcement — verify user's ACTUAL tier from Supabase
+    let validatedPremiumKey = null;
+    if (premiumModeKey && ALLOWED_PREMIUM_KEYS.includes(premiumModeKey)) {
+      if (supabase && req.user?.id && req.user.id !== 'dev-user') {
+        const { data: profile } = await supabase.from('profiles').select('tier').eq('id', req.user.id).single();
+        const userTier = profile?.tier || 'FREE';
+        const TIER_PREMIUM_MAP = {
+          FREE: [],
+          STUDENT: ['STUDENT_PREMIUM'],
+          JOURNALIST: ['STUDENT_PREMIUM', 'JOURNALIST_PREMIUM'],
+          CONSULTANT: ['STUDENT_PREMIUM', 'JOURNALIST_PREMIUM', 'CONSULTANT_PREMIUM'],
+          DEV: ['STUDENT_PREMIUM', 'JOURNALIST_PREMIUM', 'CONSULTANT_PREMIUM']
+        };
+        if (TIER_PREMIUM_MAP[userTier]?.includes(premiumModeKey)) {
+          validatedPremiumKey = premiumModeKey;
+        } else {
+          console.warn(`TIER BYPASS ATTEMPT: User ${req.user.id} (tier: ${userTier}) tried to use ${premiumModeKey}`);
+          return res.status(403).json({ error: `Premium feature "${premiumModeKey}" is not available on your ${userTier} plan.` });
+        }
+      } else {
+        // Dev mode — allow all premium keys
+        validatedPremiumKey = premiumModeKey;
+      }
     }
-    const validatedPremiumKey = (premiumModeKey && ALLOWED_PREMIUM_KEYS.includes(premiumModeKey)) ? premiumModeKey : null;
 
     console.log(`\nNew Request: Mode=${mode} | Perspective=${perspective} | Tier=${validatedPremiumKey || 'FREE'}`);
 
@@ -621,7 +638,7 @@ STRICT RULES:
 // ========================================================================
 // SECURE PERSISTENCE LAYER — all Supabase calls guarded
 // ========================================================================
-app.post('/api/save-briefing', authenticate, async (req, res) => {
+app.post('/api/save-briefing', generalLimiter, authenticate, async (req, res) => {
   try {
     const { query, mode, perspective, report, dominanceScore, biasLevel, winProbability } = req.body;
     const user_id = req.user.id;
@@ -643,7 +660,7 @@ app.post('/api/save-briefing', authenticate, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.post('/api/history', authenticate, async (req, res) => {
+app.post('/api/history', generalLimiter, authenticate, async (req, res) => {
   try {
     const user_id = req.user.id;
 
@@ -676,7 +693,7 @@ const razorpay = (process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET
   ? new Razorpay({ key_id: process.env.RAZORPAY_KEY_ID, key_secret: process.env.RAZORPAY_KEY_SECRET })
   : null;
 
-app.post('/api/create-order', authenticate, async (req, res) => {
+app.post('/api/create-order', generalLimiter, authenticate, async (req, res) => {
   try {
     // FIX 8: Guard against missing Razorpay config
     if (!razorpay) return res.status(503).json({ error: 'Payment system not configured' });
@@ -694,6 +711,7 @@ app.post('/api/create-order', authenticate, async (req, res) => {
       amount: amount * 100, // Amount is in currency subunits (paise)
       currency,
       receipt: receipt || `rcpt_${Date.now()}`,
+      notes: { plan: planUpper, user_id: req.user?.id || 'unknown' }
     };
 
     const order = await razorpay.orders.create(options);
@@ -705,12 +723,12 @@ app.post('/api/create-order', authenticate, async (req, res) => {
   }
 });
 
-app.post('/api/verify-payment', authenticate, async (req, res) => {
+app.post('/api/verify-payment', generalLimiter, authenticate, async (req, res) => {
   try {
     // FIX 8: Guard against missing Razorpay config
     if (!razorpay) return res.status(503).json({ error: 'Payment system not configured' });
 
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, plan_key } = req.body;
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
     const user_id = req.user.id;
 
     // FIX 9: No insecure fallback — reject if secret is missing
@@ -729,9 +747,20 @@ app.post('/api/verify-payment', authenticate, async (req, res) => {
     if (expectedSignature === razorpay_signature) {
       // Security Check Passed! Valid Payment.
 
+      // FIX 12: Derive plan_key from the Razorpay order notes, NOT from client
+      let plan_key = null;
+      try {
+        const order = await razorpay.orders.fetch(razorpay_order_id);
+        plan_key = order?.notes?.plan;
+        if (!plan_key || !PLAN_PRICES[plan_key]) {
+          return res.status(400).json({ error: 'Invalid plan in order. Contact support.' });
+        }
+      } catch (fetchErr) {
+        return res.status(500).json({ error: 'Failed to verify order details.' });
+      }
+
       // Upgrade the Analyst's Global Clearance in Supabase
       if (user_id && plan_key) {
-        // FIX 7: Guard Supabase call
         if (!supabase) {
           console.warn('Payment verified but Supabase not configured — cannot persist tier upgrade.');
           return res.json({ success: true, message: 'Payment verified. Tier upgrade skipped (dev mode).' });
