@@ -22,9 +22,9 @@ const Header = ({ user, onToggleMobileMenu }) => {
           <h1>PEEKOLITIX</h1>
         </div>
 
-        {/* Language Toggle */}
+        {/* Language Toggle — desktop only */}
         <button 
-          className={`lang-toggle ${isHindi ? 'lang-hi' : 'lang-en'}`}
+          className={`lang-toggle desktop-only ${isHindi ? 'lang-hi' : 'lang-en'}`}
           onClick={toggleLang}
           title={isHindi ? 'Switch to English' : 'हिंदी में बदलें'}
         >
@@ -41,24 +41,16 @@ const Header = ({ user, onToggleMobileMenu }) => {
       
       <div className="header-right">
         {tier === TIERS.FREE && (
-          <>
-            {/* Desktop query counter */}
-            <div className="query-counter desktop-only">
-              <span>{15 - queryCount} {t('queries left today', lang)}</span>
-              <button className="header-upgrade-btn" onClick={() => openUpgradeModal()}>
-                <Zap size={12} /> {t('Upgrade', lang)}
-              </button>
-            </div>
-            {/* Mobile compact counter */}
-            <div className="query-counter-mobile mobile-only">
-              <span className="mobile-query-count">{15 - queryCount}</span>
-              <span className="mobile-query-label">left</span>
-            </div>
-          </>
+          <div className="query-counter desktop-only">
+            <span>{15 - queryCount} {t('queries left today', lang)}</span>
+            <button className="header-upgrade-btn" onClick={() => openUpgradeModal()}>
+              <Zap size={12} /> {t('Upgrade', lang)}
+            </button>
+          </div>
         )}
 
         <div 
-          className="tier-pill"
+          className="tier-pill desktop-only"
           style={{ background: tierConfig.bg, border: `1px solid ${tierConfig.border}`, color: tierConfig.color }}
           onClick={() => openUpgradeModal()}
         >

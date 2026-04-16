@@ -3,10 +3,11 @@ import './BriefingArea.css';
 import PerspectiveFilter from './PerspectiveFilter';
 import PremiumGate from './PremiumGate';
 import { useLanguage } from '../context/LanguageContext';
+import { usePremium, TIERS } from '../context/PremiumContext';
 import { t } from '../i18n/translations';
 import {
   Terminal, Send, Search, Loader2, Wrench,
-  Swords, PieChart, BookOpen, Globe, Zap, ShieldAlert, Scale
+  Swords, PieChart, BookOpen, Globe, Zap, ShieldAlert, Scale, Languages
 } from 'lucide-react';
 
 const TOOLS = [
@@ -22,7 +23,9 @@ const TOOLS = [
 const BriefingArea = ({ currentMode, setMode, currentPerspective, setPerspective, onQuerySubmit, isLoading, intelligenceData, premiumGates = [] }) => {
   const [query, setQuery] = useState('');
   const [toolsExpanded, setToolsExpanded] = useState(false);
-  const { lang } = useLanguage();
+  const { lang, toggleLang, isHindi } = useLanguage();
+  const { tier, queryCount, openUpgradeModal, TIER_CONFIG } = usePremium();
+  const tierConfig = TIER_CONFIG[tier];
 
   const isToolMode = TOOLS.some(t => t.id === currentMode);
   const isChatMode = currentMode === 'CHAT';
@@ -94,6 +97,30 @@ const BriefingArea = ({ currentMode, setMode, currentPerspective, setPerspective
           currentPerspective={currentPerspective}
           setPerspective={setPerspective}
         />
+      </div>
+
+      {/* Mobile Control Bar — tier, queries, language */}
+      <div className="mobile-control-bar">
+        <div 
+          className="mcb-tier"
+          style={{ background: tierConfig.bg, border: `1px solid ${tierConfig.border}`, color: tierConfig.color }}
+          onClick={() => openUpgradeModal()}
+        >
+          {tierConfig.label}
+        </div>
+        {tier === TIERS.FREE && (
+          <div className="mcb-queries" onClick={() => openUpgradeModal()}>
+            <Zap size={11} />
+            <span>{15 - queryCount}</span>
+          </div>
+        )}
+        <button 
+          className={`mcb-lang ${isHindi ? 'mcb-lang-hi' : ''}`}
+          onClick={toggleLang}
+        >
+          <Languages size={12} />
+          <span>{isHindi ? 'हि' : 'EN'}</span>
+        </button>
       </div>
 
       <div className="briefing-content">
