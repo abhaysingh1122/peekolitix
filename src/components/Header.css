@@ -20,8 +20,18 @@
   gap: 12px;
 }
 
-.brand-icon {
-  color: var(--brand-purple);
+.brand-tiger-logo {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(196, 30, 58, 0.6);
+  box-shadow: 0 0 12px rgba(196, 30, 58, 0.35);
+  transition: box-shadow 0.3s ease;
+}
+
+.brand-tiger-logo:hover {
+  box-shadow: 0 0 20px rgba(196, 30, 58, 0.6);
 }
 
 .logo h1 {
@@ -29,7 +39,10 @@
   font-weight: 700;
   letter-spacing: 2px;
   margin: 0;
-  color: var(--text-primary);
+  background: linear-gradient(135deg, var(--text-primary) 60%, #c41e3a 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .status-indicator {

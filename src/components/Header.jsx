@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import './Header.css';
-import { Activity, Menu, ShieldCheck, Terminal, Zap, Languages } from 'lucide-react';
+import { Activity, Menu, Terminal, Zap, Languages } from 'lucide-react';
 import { usePremium, TIERS } from '../context/PremiumContext';
 import { useLanguage } from '../context/LanguageContext';
 import { t } from '../i18n/translations';
@@ -18,7 +18,7 @@ const Header = ({ user, onToggleMobileMenu }) => {
           <Menu size={20} />
         </button>
         <div className="logo">
-          <ShieldCheck size={24} className="brand-icon" />
+          <img src="/tiger-logo.png" alt="Peekolitix Tiger" className="brand-tiger-logo" />
           <h1>PEEKOLITIX</h1>
         </div>
 

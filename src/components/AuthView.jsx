@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Shield, Lock, Mail, ArrowRight, Activity } from 'lucide-react';
+import { Lock, Mail, ArrowRight, Activity } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import './AuthView.css';
 
@@ -45,7 +45,7 @@ const AuthView = () => {
       >
         <div className="auth-header">
           <div className="auth-logo">
-            <Shield className="logo-icon-shield" />
+            <img src="/tiger-logo.png" alt="Peekolitix Tiger" className="auth-tiger-logo" />
             <span className="logo-text">PEEKOLITIX</span>
           </div>
           <h2 className="auth-title">
