@@ -41,7 +41,7 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 app.use(helmet());
-app.use(express.json());
+app.use(express.json({ limit: '1mb' }));
 
 // ========================================================================
 // RATE LIMITING — 10 requests per minute per IP on the AI endpoint
@@ -665,7 +665,7 @@ app.post('/api/translate', aiLimiter, authenticate, async (req, res) => {
         'Authorization': `Bearer ${NVIDIA_API_KEY}`,
       },
       body: JSON.stringify({
-        model: 'meta/llama-3.1-70b-instruct',
+        model: 'meta/llama-3.1-8b-instruct', // Switched from 70B for Render timeout safety
         messages: [
           {
             role: 'system',
@@ -791,7 +791,8 @@ app.post('/api/history', generalLimiter, authenticate, async (req, res) => {
       .from('debates')
       .select('*')
       .eq('user_id', user_id)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(50);
 
     if (error) {
       console.error('Supabase History Fetch Error:', error.message);

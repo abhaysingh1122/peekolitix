@@ -128,10 +128,7 @@ export const generateIntelligenceReport = async (query, mode, perspective, histo
         mode,
         perspective,
         history,
-        premiumModeKey,
-        systemInstruction: premiumModeKey 
-          ? `${SYSTEM_INSTRUCTION}\n\n# TRIGGER ACTIVE: ${premiumModeKey} #\nApply the specific deliverables defined for this tier immediately.`
-          : SYSTEM_INSTRUCTION
+        premiumModeKey
       }),
     });
 
@@ -159,13 +156,7 @@ export const synthesizeHistory = async (history) => {
           query: `Synthesize the following ${history.length} Indian Political Intelligence briefings into a single High-Coverage Strategy Dossier. Focus exclusively on the trends and metrics from these specific reports.`,
           mode: 'QUICK',
           perspective: 'NEUTRAL',
-          history: history,
-          systemInstruction: `You are the Peekolitix Synthesis Engine. 
-          STRICT TASK:
-          - Combine the provided political reports into one Consolidated Strategic Dossier.
-          - Focus ONLY on the Indian politicians, constituencies, and macroeconomic stats found in the history.
-          - Ignore all global/historical events not present in the user\'s history.
-          - Structure the output as a Master Briefing with: ONE-CLICK STRATEGY, DATA CONSOLIDATION, and FUTURE OUTLOOK.`
+          history: history
         }),
       });
   
