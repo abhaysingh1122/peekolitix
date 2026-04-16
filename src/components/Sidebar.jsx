@@ -189,15 +189,17 @@ const Sidebar = ({ currentMode, setMode, onSynthesize, history = [], onSelectHis
       </div>
 
       <div className="sidebar-footer">
-        {!isCollapsed && user && (
-          <div className="analyst-profile glass-panel">
+        {user && (
+          <div className="analyst-profile glass-panel" title={user.email}>
             <div className="profile-icon">
               <UserIcon size={14} />
             </div>
-            <div className="profile-info">
-              <span className="profile-alias">{user.email?.split('@')[0].toUpperCase()}</span>
-              <span className="profile-status">{t('VERIFIED ANALYST', lang)}</span>
-            </div>
+            {!isCollapsed && (
+              <div className="profile-info">
+                <span className="profile-alias">{user.email?.split('@')[0].toUpperCase()}</span>
+                <span className="profile-status">{t('VERIFIED ANALYST', lang)}</span>
+              </div>
+            )}
           </div>
         )}
 

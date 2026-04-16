@@ -5,9 +5,10 @@
   border-right: 1px solid var(--border-color);
   position: relative;
   z-index: 100; /* Higher z-index for mobile drawer */
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden;
   background: var(--bg-surface);
+  display: flex;
+  flex-direction: column;
 }
 
 @media (max-width: 768px) {
@@ -189,8 +190,10 @@
 }
 
 .briefing-list {
+  flex: 1;
   overflow-y: auto;
-  max-height: 180px;
+  margin-right: -8px;
+  padding-right: 8px;
 }
 
 .briefing-item {
@@ -339,6 +342,13 @@
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 8px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.sidebar.collapsed .analyst-profile {
+  padding: 8px;
+  justify-content: center;
 }
 
 .profile-icon {
