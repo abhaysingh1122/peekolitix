@@ -583,26 +583,27 @@ Example: "For deeper analysis, try asking: • [specific question 1] • [specif
 ${tierHeader ? tierHeader + '\n\nSTRICT: You MUST output the above premium deliverables using the exact headers provided.' : ''}
 STRICT: Avoid vague language. Use Indian official metrics and cite sources.${disambiguationDirective}`;
 
-    // 🛠️ RELIABILITY WRAPPER: Retry logic for NVIDIA API
+    // 🛠️ RELIABILITY WRAPPER: NVIDIA with FAST-FAIL & GEMINI FALLBACK
+    let responseText = null;
+    let fallbackUsed = false;
     let attempts = 0;
-    const maxAttempts = 3;
-    let response;
-    let data;
+    const maxAttempts = 2; // Reduced attempts to prevent Render hitting 60s hard timeout
 
-    while (attempts < maxAttempts) {
+    // PHASE 1: NVIDIA Fast-lane (cheap, usually fast)
+    while (attempts < maxAttempts && !responseText) {
       try {
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 25000); // 25s timeout per attempt
+        const timeout = setTimeout(() => controller.abort(), 15000); // 15s strict timeout
 
-        response = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
+        const response = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${NVIDIA_API_KEY}`,
+            'Authorization': `Bearer ${process.env.NVIDIA_API_KEY}`,
           },
           signal: controller.signal,
           body: JSON.stringify({
-            model: 'meta/llama-3.1-8b-instruct', // Switch to 8B for 10x speed and stability on free tier
+            model: 'meta/llama-3.1-8b-instruct', // Leanest variant
             messages: [
               { role: 'system', content: systemPrompt },
               ...chatHistory,
@@ -610,30 +611,81 @@ STRICT: Avoid vague language. Use Indian official metrics and cite sources.${dis
             ],
             temperature: 0.1,
             top_p: 1.0,
-            max_tokens: 2000, // Reduced from 3500 to stay within Render's 30s timeout window
+            max_tokens: 800, // Reduced massively from 3500->2000->800 for instant response
           }),
         });
 
         clearTimeout(timeout);
-        data = await response.json();
+        const data = await response.json();
         
-        if (response.ok) break; // Success!
+        if (response.ok) {
+          responseText = data.choices[0].message.content;
+          break; // Success
+        }
         
         console.warn(`NVIDIA Attempt ${attempts + 1} failed: ${data.error?.message || response.statusText}`);
       } catch (err) {
-        console.error(`NVIDIA Attempt ${attempts + 1} Error: ${err.message}`);
-        if (attempts === maxAttempts - 1) throw err;
+        console.warn(`NVIDIA Attempt ${attempts + 1} Error: ${err.message}`);
       }
       attempts++;
-      await new Promise(r => setTimeout(r, 1000 * attempts)); // Backoff
+      if (!responseText) await new Promise(r => setTimeout(r, 800)); // Short backoff
     }
 
-    if (!response.ok) throw new Error(data.error?.message || "NVIDIA Engine Error after retries");
+    // PHASE 2: Gemini Flash Fallback (ultra-reliable, high speed)
+    if (!responseText && process.env.GEMINI_API_KEY) {
+      console.log("⚠️ NVIDIA engine failed. Diverting traffic to Gemini Flash Fallback...");
+      fallbackUsed = true;
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 20000);
+
+        // Map Chat History into Gemini Format
+        const geminiHistory = chatHistory.map(msg => ({
+          role: msg.role === 'assistant' ? 'model' : 'user',
+          parts: [{ text: msg.content }]
+        }));
+
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal,
+          body: JSON.stringify({
+            systemInstruction: {
+              parts: [{ text: systemPrompt }]
+            },
+            contents: [
+              ...geminiHistory,
+              { role: 'user', parts: [{ text: userPrompt }] }
+            ],
+            generationConfig: {
+              temperature: 0.1,
+              maxOutputTokens: 800,
+            }
+          })
+        });
+
+        clearTimeout(timeout);
+        const data = await response.json();
+        
+        if (response.ok && data.candidates && data.candidates.length > 0) {
+          responseText = data.candidates[0].content.parts[0].text;
+          console.log("✅ Gemini Fallback succeeded.");
+        } else {
+          console.error("Gemini Fallback unhandled state:", data);
+        }
+      } catch (err) {
+        console.error("Gemini Fallback Error:", err.message);
+      }
+    }
+
+    if (!responseText) {
+      throw new Error("COGNITIVE ENGINE BUSTED: Both Primary (NVIDIA) and Secondary (Gemini) AI providers timed out or failed. Please try again.");
+    }
 
     res.json({
       success: true,
-      content: data.choices[0].message.content,
-      usage: data.usage
+      content: responseText,
+      fallbackUsed
     });
 
   } catch (error) {
@@ -658,18 +710,7 @@ app.post('/api/translate', aiLimiter, authenticate, async (req, res) => {
 
     const langName = targetLang === 'hi' ? 'Hindi' : 'English';
 
-    const response = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${NVIDIA_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: 'meta/llama-3.1-8b-instruct', // Switched from 70B for Render timeout safety
-        messages: [
-          {
-            role: 'system',
-            content: `You are a professional translator. Translate the following text to ${langName}.
+    const sysPrompt = `You are a professional translator. Translate the following text to ${langName}.
 
 STRICT RULES:
 1. Preserve ALL markdown formatting exactly (##, ###, **, *, -, >, numbers, tables, blockquotes).
@@ -678,21 +719,79 @@ STRICT RULES:
 4. Do NOT translate proper nouns (names of people, places, institutions, schemes like MPLADS, PMAY, NITI Aayog, BJP, Congress, etc.).
 5. Do NOT translate data/numbers/percentages.
 6. Keep technical English terms in parentheses after Hindi translation where helpful (e.g., "सकल घरेलू उत्पाद (GDP)").
-7. Output ONLY the translated text, nothing else.`
-          },
-          { role: 'user', content: trimmedText }
-        ],
-        temperature: 0.1,
-        max_tokens: 4000,
-      }),
-    });
+7. Output ONLY the translated text, nothing else.`;
 
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error?.message || 'Translation engine error');
+    let translatedContent = null;
+    let attempts = 0;
+
+    // 1. NVIDIA Translator
+    while (attempts < 2 && !translatedContent) {
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 12000);
+
+        const response = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${process.env.NVIDIA_API_KEY}`,
+          },
+          signal: controller.signal,
+          body: JSON.stringify({
+            model: 'meta/llama-3.1-8b-instruct',
+            messages: [
+              { role: 'system', content: sysPrompt },
+              { role: 'user', content: trimmedText }
+            ],
+            temperature: 0.1,
+            max_tokens: 1500, // Reduced for speed and Render limits
+          }),
+        });
+
+        clearTimeout(timeout);
+        const data = await response.json();
+        
+        if (response.ok) {
+          translatedContent = data.choices[0].message.content;
+          break;
+        }
+      } catch (err) {}
+      attempts++;
+    }
+
+    // 2. Gemini Translator (Fallback)
+    if (!translatedContent && process.env.GEMINI_API_KEY) {
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 18000);
+
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal,
+          body: JSON.stringify({
+            systemInstruction: { parts: [{ text: sysPrompt }] },
+            contents: [ { role: 'user', parts: [{ text: trimmedText }] } ],
+            generationConfig: { temperature: 0.1, maxOutputTokens: 1500 }
+          })
+        });
+
+        clearTimeout(timeout);
+        const data = await response.json();
+        
+        if (response.ok && data.candidates && data.candidates.length > 0) {
+          translatedContent = data.candidates[0].content.parts[0].text;
+        }
+      } catch (err) {}
+    }
+
+    if (!translatedContent) {
+      throw new Error("Translation Engine Unavailable");
+    }
 
     res.json({
       success: true,
-      translated: data.choices[0].message.content,
+      translated: translatedContent,
     });
   } catch (error) {
     console.error(`Translation Error: ${error.message}`);
