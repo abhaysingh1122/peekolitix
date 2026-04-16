@@ -4,7 +4,7 @@
   flex-direction: column;
   border-right: 1px solid var(--border-color);
   position: relative;
-  z-index: 100;
+  z-index: 301;
   overflow-y: auto;
   overflow-x: hidden;
   background: var(--bg-surface);
@@ -191,10 +191,7 @@
 }
 
 .briefing-list {
-  max-height: 180px;
-  overflow-y: auto;
-  margin-right: -8px;
-  padding-right: 8px;
+  flex: 1;
 }
 
 .briefing-item {
@@ -330,10 +327,7 @@
   margin-top: auto;
   padding: 24px 16px;
   border-top: 1px solid var(--border-color);
-  background: var(--bg-surface); /* solid background to cover scroll items */
-  position: sticky;
-  bottom: 0;
-  z-index: 10;
+  background: var(--bg-surface);
   display: flex;
   flex-direction: column;
   gap: 16px;

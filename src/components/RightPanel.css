@@ -236,14 +236,20 @@
 
 @media (max-width: 768px) {
   .right-panel {
-    display: flex;
-    width: 100%;
-    border-left: none;
-    border-top: 1px solid var(--border-color);
-    height: auto;
-    padding: 30px 20px;
-    padding-bottom: 160px; /* Space for the search bar */
-    flex-shrink: 0;
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 320px;
+    max-width: 90vw;
+    height: 100vh; /* Use vh to ensure it spans full screen */
+    border-left: 1px solid var(--border-color);
+    border-top: none;
+    padding: 24px 20px;
+    padding-bottom: 40px;
+    z-index: 301;
+    background: var(--bg-surface);
+    box-shadow: -10px 0 30px rgba(0,0,0,0.6);
   }
   
   .right-panel-collapsed {
