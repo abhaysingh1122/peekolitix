@@ -4,9 +4,8 @@
   flex-direction: column;
   border-right: 1px solid var(--border-color);
   position: relative;
-  z-index: 100; /* Higher z-index for mobile drawer */
-  overflow-y: auto;
-  overflow-x: hidden;
+  z-index: 100;
+  overflow: hidden;
   background: var(--bg-surface);
   display: flex;
   flex-direction: column;
@@ -78,10 +77,13 @@
   padding: 24px 16px;
   display: flex;
   flex-direction: column;
+  flex-shrink: 0;
 }
 
 .h-full {
   flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .section-title {
@@ -190,7 +192,11 @@
 }
 
 .briefing-list {
-  max-height: 180px;
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+  margin-right: -8px;
+  padding-right: 8px;
 }
 
 .briefing-item {

@@ -9,6 +9,25 @@
   background: var(--bg-panel);
   position: relative;
   overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Custom Scrollbar for Right Panel */
+.right-panel::-webkit-scrollbar {
+  width: 4px;
+}
+
+.right-panel::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.right-panel::-webkit-scrollbar-thumb {
+  background: rgba(199, 125, 255, 0.2);
+  border-radius: 10px;
+}
+
+.right-panel::-webkit-scrollbar-thumb:hover {
+  background: rgba(199, 125, 255, 0.5);
 }
 
 .rp-collapse-btn {
