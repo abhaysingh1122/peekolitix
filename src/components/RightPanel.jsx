@@ -28,7 +28,7 @@ const RightPanel = ({ history = [] }) => {
     return t("WAR ROOM KING", lang);
   };
 
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(() => window.innerWidth <= 768);
 
   if (isCollapsed) {
     return (

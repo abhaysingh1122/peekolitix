@@ -41,12 +41,20 @@ const Header = ({ user, onToggleMobileMenu }) => {
       
       <div className="header-right">
         {tier === TIERS.FREE && (
-          <div className="query-counter mobile-hidden">
-            <span>{15 - queryCount} {t('queries left today', lang)}</span>
-            <button className="header-upgrade-btn" onClick={() => openUpgradeModal()}>
-              <Zap size={12} /> {t('Upgrade', lang)}
-            </button>
-          </div>
+          <>
+            {/* Desktop query counter */}
+            <div className="query-counter desktop-only">
+              <span>{15 - queryCount} {t('queries left today', lang)}</span>
+              <button className="header-upgrade-btn" onClick={() => openUpgradeModal()}>
+                <Zap size={12} /> {t('Upgrade', lang)}
+              </button>
+            </div>
+            {/* Mobile compact counter */}
+            <div className="query-counter-mobile mobile-only">
+              <span className="mobile-query-count">{15 - queryCount}</span>
+              <span className="mobile-query-label">left</span>
+            </div>
+          </>
         )}
 
         <div 

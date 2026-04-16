@@ -193,6 +193,37 @@
   cursor: pointer;
   padding: 4px;
 }
+/* Desktop/Mobile visibility helpers */
+.mobile-only {
+  display: none;
+}
+
+.desktop-only {
+  display: flex;
+}
+
+/* Mobile compact query counter */
+.query-counter-mobile {
+  align-items: center;
+  gap: 4px;
+  background: rgba(196, 30, 58, 0.15);
+  border: 1px solid rgba(196, 30, 58, 0.3);
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+
+.mobile-query-count {
+  font-size: 0.85rem;
+  font-weight: 900;
+  color: #c41e3a;
+}
+
+.mobile-query-label {
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: 0.5px;
+}
 
 @media (max-width: 768px) {
   .app-header {
@@ -218,13 +249,21 @@
     letter-spacing: 3px;
   }
 
-  .logo svg {
-    width: 18px;
-    height: 18px;
+  .brand-tiger-logo {
+    width: 24px;
+    height: 24px;
   }
 
   .mobile-hidden {
     display: none !important;
+  }
+
+  .desktop-only {
+    display: none !important;
+  }
+
+  .mobile-only {
+    display: flex !important;
   }
 
   .status-pulse-mobile {

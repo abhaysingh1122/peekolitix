@@ -228,11 +228,21 @@
   }
   
   .right-panel-collapsed {
-    display: none;
+    width: 100%;
+    height: auto;
+    border-left: none;
+    border-top: 1px solid var(--border-color);
+    flex-direction: row;
+    justify-content: center;
+    padding: 8px 16px;
   }
 
-  .rank-card {
-    background: rgba(199, 125, 255, 0.08);
-    border: 1px solid rgba(199, 125, 255, 0.3);
+  .rp-toggle-btn {
+    flex-direction: row;
+  }
+
+  .rp-toggle-text {
+    writing-mode: horizontal-tb;
+    text-orientation: initial;
   }
 }
