@@ -95,8 +95,8 @@ const TranslatedReport = ({ markdown, ViewComponent = ReportView }) => {
   if (isHindi && translateError) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <div style={{ padding: '10px 16px', background: 'rgba(255,80,80,0.1)', border: '1px solid rgba(255,80,80,0.3)', borderRadius: 6, color: '#ff8080', fontFamily: 'monospace', fontSize: '0.8rem' }}>
-          ⚠️ अनुवाद विफल (Translation failed): {translateError}
+        <div style={{ padding: '10px 16px', background: 'rgba(255,80,80,0.1)', border: '1px solid rgba(255,80,80,0.3)', borderRadius: 6, color: '#ff8080', fontSize: '0.85rem' }}>
+          ⚠️ अनुवाद सेवा वर्तमान में अनुपलब्ध है। (Translation service is temporarily unavailable)
         </div>
         <ViewComponent markdownContent={markdown} />
       </div>
