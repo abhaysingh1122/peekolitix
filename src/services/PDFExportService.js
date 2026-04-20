@@ -79,15 +79,20 @@ export const exportToPDF = (reportContent, metadata) => {
   }
 
   // --- 5. FORCE DOWNLOAD (bypass Chrome blob viewer) ---
-  const filename = `Intelligence_Report_${metadata.topic.replace(/\s+/g, '_')}.pdf`;
-  const pdfBlob = doc.output('blob');
+  const filename = `Intelligence_Report_${metadata.topic.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_-]/g, '')}.pdf`;
+  const pdfArrayBuffer = doc.output('arraybuffer');
+  const pdfBlob = new Blob([pdfArrayBuffer], { type: 'application/pdf' });
   const downloadUrl = URL.createObjectURL(pdfBlob);
   const link = document.createElement('a');
   link.href = downloadUrl;
   link.download = filename;
+  link.style.display = 'none';
   document.body.appendChild(link);
   link.click();
-  document.body.removeChild(link);
-  setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
+  // Cleanup after brief delay
+  setTimeout(() => {
+    document.body.removeChild(link);
+    URL.revokeObjectURL(downloadUrl);
+  }, 500);
 };
 
