@@ -78,8 +78,16 @@ export const exportToPDF = (reportContent, metadata) => {
     doc.text(`Intelligence Briefing | Peekolitix Strategic Unit | Page ${i} of ${pageCount}`, pageWidth / 2, 288, { align: "center" });
   }
 
-  // --- 5. SAVE ---
+  // --- 5. FORCE DOWNLOAD (bypass Chrome blob viewer) ---
   const filename = `Intelligence_Report_${metadata.topic.replace(/\s+/g, '_')}.pdf`;
-  doc.save(filename);
+  const pdfBlob = doc.output('blob');
+  const downloadUrl = URL.createObjectURL(pdfBlob);
+  const link = document.createElement('a');
+  link.href = downloadUrl;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
 };
 
