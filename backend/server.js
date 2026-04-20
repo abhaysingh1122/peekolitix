@@ -730,11 +730,45 @@ STRICT RULES:
     let attempts = 0;
     let lastError = "";
 
-    // 1. NVIDIA Translator
-    while (attempts < 2 && !translatedContent) {
+    // 1. PRIMARY ENIGINE: Gemini 1.5 Flash (Blazing fast for Hindi compared to Llama 8B)
+    if (process.env.GEMINI_API_KEY) {
+      while (attempts < 2 && !translatedContent) {
+        try {
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 15000); // Wait up to 15s for Gemini
+
+          const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            signal: controller.signal,
+            body: JSON.stringify({
+              systemInstruction: { parts: [{ text: sysPrompt }] },
+              contents: [ { role: 'user', parts: [{ text: trimmedText }] } ],
+              generationConfig: { temperature: 0.1, maxOutputTokens: 3000 }
+            })
+          });
+
+          clearTimeout(timeout);
+          const data = await response.json();
+          
+          if (response.ok && data.candidates && data.candidates.length > 0) {
+            translatedContent = data.candidates[0].content.parts[0].text;
+            break;
+          } else {
+            lastError = `Gemini: ${data.error?.message || response.statusText}`;
+          }
+        } catch (err) {
+          lastError = `Gemini exception: ${err.message}`;
+        }
+        attempts++;
+      }
+    }
+
+    // 2. FALLBACK: NVIDIA (Llama 3.1 8B) 
+    if (!translatedContent) {
       try {
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 25000); // Wait up to 25s
+        const timeout = setTimeout(() => controller.abort(), 25000); // 25s for Llama
 
         const response = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
           method: 'POST',
@@ -750,7 +784,7 @@ STRICT RULES:
               { role: 'user', content: trimmedText }
             ],
             temperature: 0.1,
-            max_tokens: 3000, // Increased to support long Hindi outputs
+            max_tokens: 3000, 
           }),
         });
 
@@ -759,43 +793,11 @@ STRICT RULES:
         
         if (response.ok) {
           translatedContent = data.choices[0].message.content;
-          break;
         } else {
-          lastError = `NVIDIA: ${data.error?.message || response.statusText}`;
+          lastError += ` | NVIDIA: ${data.error?.message || response.statusText}`;
         }
       } catch (err) {
-        lastError = `NVIDIA exception: ${err.message}`;
-      }
-      attempts++;
-    }
-
-    // 2. Gemini Translator (Fallback)
-    if (!translatedContent && process.env.GEMINI_API_KEY) {
-      try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 30000); // Wait up to 30s
-
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          signal: controller.signal,
-          body: JSON.stringify({
-            systemInstruction: { parts: [{ text: sysPrompt }] },
-            contents: [ { role: 'user', parts: [{ text: trimmedText }] } ],
-            generationConfig: { temperature: 0.1, maxOutputTokens: 3000 }
-          })
-        });
-
-        clearTimeout(timeout);
-        const data = await response.json();
-        
-        if (response.ok && data.candidates && data.candidates.length > 0) {
-          translatedContent = data.candidates[0].content.parts[0].text;
-        } else {
-          lastError = `Gemini: ${data.error?.message || response.statusText}`;
-        }
-      } catch (err) {
-        lastError = `Gemini exception: ${err.message}`;
+        lastError += ` | NVIDIA exception: ${err.message}`;
       }
     }
 
